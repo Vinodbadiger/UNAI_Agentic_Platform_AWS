@@ -1,0 +1,27 @@
+version: 0.2
+
+phases:
+
+  pre_build:
+    commands:
+      - echo "Logging in to Amazon ECR..."
+      - AWS_ACCOUNT_ID=726000266818
+      - AWS_REGION=ap-south-1
+      - ECR_REPOSITORY=unai-app
+      - ECR_REGISTRY=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - IMAGE_TAG=$(echo $CODEBUILD_RESOLVED_SOURCE_VERSION | cut -c 1-7)
+      - echo "Building image with tag $IMAGE_TAG"
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+  build:
+    commands:
+      - echo "Building UNAI Docker image..."
+      - cd unai-app
+      - docker build -t $ECR_REPOSITORY:$IMAGE_TAG .
+      - docker tag $ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+
+  post_build:
+    commands:
+      - echo "Pushing UNAI image to Amazon ECR..."
+      - docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+      - echo "Successfully pushed $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
